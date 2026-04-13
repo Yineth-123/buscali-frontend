@@ -17,15 +17,21 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '../types/navigation';
 import { registrarUsuario } from '../services/usuariosApi';
-import { useAuth } from '../context/AuthContext';
 import { getApiBaseUrl } from '../config/api';
 import { C, F } from '../theme/buscaliTheme';
 import BusCaliTextField from '../components/BusCaliTextField';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Register'>;
 
+type Feedback = {
+  type: 'error' | 'success';
+  text: string;
+};
+
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+
 export default function RegisterScreen({ navigation }: Props) {
-  const { signIn } = useAuth();
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
   const [email, setEmail] = useState('');
@@ -34,219 +40,268 @@ export default function RegisterScreen({ navigation }: Props) {
   const [confirm, setConfirm] = useState('');
   const [terms, setTerms] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
 
-  const socialSoon = () =>
-    Alert.alert('Próximamente', 'El registro con redes sociales se activará más adelante.');
+  const handleGoBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('Login');
+    }
+  };
 
   const handleRegister = async () => {
+    setFeedback(null);
+
     if (!nombre.trim()) {
-      Alert.alert('Validación', 'El nombre es obligatorio.');
+      setFeedback({ type: 'error', text: 'El nombre es obligatorio.' });
       return;
     }
     if (!apellido.trim()) {
-      Alert.alert('Validación', 'El apellido es obligatorio.');
+      setFeedback({ type: 'error', text: 'El apellido es obligatorio.' });
+      return;
+    }
+    if (!email.trim()) {
+      setFeedback({ type: 'error', text: 'El correo electrónico es obligatorio.' });
+      return;
+    }
+    if (!emailRegex.test(email.trim())) {
+      setFeedback({ type: 'error', text: 'Ingresa un correo válido.' });
       return;
     }
     if (!telefono.trim()) {
-      Alert.alert('Validación', 'El teléfono es obligatorio.');
+      setFeedback({ type: 'error', text: 'El teléfono es obligatorio.' });
       return;
     }
     if (telefono.trim().length > 20) {
-      Alert.alert('Validación', 'El teléfono admite máximo 20 caracteres.');
+      setFeedback({ type: 'error', text: 'El teléfono admite máximo 20 caracteres.' });
       return;
     }
-    if (password.length < 6) {
-      Alert.alert('Validación', 'La contraseña debe tener al menos 6 caracteres.');
+    if (password.length < 8) {
+      setFeedback({ type: 'error', text: 'La contraseña debe tener al menos 8 caracteres.' });
+      return;
+    }
+    if (!passwordRegex.test(password)) {
+      setFeedback({
+        type: 'error',
+        text: 'La contraseña debe incluir mayúscula, minúscula y número.',
+      });
       return;
     }
     if (password !== confirm) {
-      Alert.alert('Validación', 'Las contraseñas no coinciden.');
+      setFeedback({ type: 'error', text: 'Las contraseñas no coinciden.' });
       return;
     }
     if (!terms) {
-      Alert.alert('Validación', 'Debes aceptar los términos y condiciones.');
+      setFeedback({ type: 'error', text: 'Debes aceptar los términos y condiciones.' });
       return;
     }
 
     try {
       setLoading(true);
-      const user = await registrarUsuario({
+      await registrarUsuario({
         nombre: nombre.trim(),
         apellido: apellido.trim(),
         telefono: telefono.trim(),
         password,
-        email: email.trim() || undefined,
+        email: email.trim(),
       });
-      signIn(user);
+      setFeedback({
+        type: 'success',
+        text: 'Registro exitoso. Te llevamos al login.',
+      });
+      setTimeout(() => navigation.navigate('Login'), 900);
     } catch (e) {
       const message = e instanceof Error ? e.message : 'No se pudo registrar';
-      Alert.alert('Error', message);
+      setFeedback({ type: 'error', text: message });
     } finally {
       setLoading(false);
     }
   };
 
+  const socialSoon = () =>
+    Alert.alert('Próximamente', 'El registro con redes sociales se activará más adelante.');
+
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-    <KeyboardAvoidingView
-      style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={styles.root}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.topRow}>
-          <Text style={styles.logo}>BUSCALI</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-            <Text style={styles.loginLink}>Inicia sesión</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.headerBlock}>
-          <Text style={styles.titleLine1}>Únete a la </Text>
-          <Text style={styles.titleMovida}>movida</Text>
-          <Text style={styles.subtitle}>
-            Regístrate para personalizar tus rutas y recibir alertas en vivo.
-          </Text>
-        </View>
-
-        <BusCaliTextField
-          label="Nombre"
-          icon="person-outline"
-          placeholder="Ej. Jairo"
-          value={nombre}
-          onChangeText={setNombre}
-          autoCapitalize="words"
-        />
-        <BusCaliTextField
-          label="Apellido"
-          icon="badge"
-          placeholder="Ej. Varela"
-          value={apellido}
-          onChangeText={setApellido}
-          autoCapitalize="words"
-          containerStyle={styles.fieldSpace}
-        />
-        <BusCaliTextField
-          label="Correo electrónico"
-          icon="alternate-email"
-          placeholder="tu@email.com"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          containerStyle={styles.fieldSpace}
-        />
-        <BusCaliTextField
-          label="Teléfono"
-          icon="smartphone"
-          placeholder="Ej. 3001234567"
-          value={telefono}
-          onChangeText={setTelefono}
-          keyboardType="phone-pad"
-          maxLength={20}
-          containerStyle={styles.fieldSpace}
-        />
-
-        <View style={styles.pwdGrid}>
-          <BusCaliTextField
-            label="Contraseña"
-            icon="lock-outline"
-            placeholder="••••••••"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            containerStyle={styles.pwdHalf}
-          />
-          <BusCaliTextField
-            label="Confirmar"
-            icon="verified-user"
-            placeholder="••••••••"
-            value={confirm}
-            onChangeText={setConfirm}
-            secureTextEntry
-            containerStyle={styles.pwdHalf}
-          />
-        </View>
-
-        <Pressable
-          style={styles.termsRow}
-          onPress={() => setTerms((t) => !t)}
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: terms }}
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <View style={[styles.checkbox, terms && styles.checkboxOn]}>
-            {terms ? (
-              <MaterialIcons name="check" size={16} color={C.onPrimary} />
-            ) : null}
+          <View style={styles.topRow}>
+            <Pressable style={styles.backButton} onPress={handleGoBack}>
+              <MaterialIcons name="arrow-back-ios" size={18} color={C.primary} />
+              <Text style={styles.backText}>Volver</Text>
+            </Pressable>
+            <Text style={styles.logo}>BUSCALI</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+              <Text style={styles.loginLinkTop}>Inicia sesión</Text>
+            </TouchableOpacity>
           </View>
-          <Text style={styles.termsText}>
-            Acepto los{' '}
-            <Text style={styles.termsBold}>Términos y Condiciones</Text> y la política de
-            privacidad de BusCali.
-          </Text>
-        </Pressable>
 
-        <TouchableOpacity
-          activeOpacity={0.92}
-          onPress={handleRegister}
-          disabled={loading}
-          style={[styles.ctaWrap, loading && styles.ctaDisabled]}
-        >
-          <LinearGradient
-            colors={[C.secondaryContainer, C.secondaryFixedDim]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.ctaGrad}
-          >
-            {loading ? (
-              <ActivityIndicator color={C.onSecondaryContainer} />
-            ) : (
-              <>
-                <Text style={styles.ctaText}>Crear cuenta</Text>
-                <MaterialIcons name="trending-flat" size={26} color={C.onSecondaryContainer} />
-              </>
-            )}
-          </LinearGradient>
-        </TouchableOpacity>
+          <View style={styles.card}>
+            <View style={styles.titleBlock}>
+              <Text style={styles.title}>Únete a la</Text>
+              <Text style={[styles.title, styles.titleAccent]}>movida</Text>
+            </View>
+            <Text style={styles.subtitle}>
+              Regístrate para personalizar tus rutas y recibir alertas en vivo.
+            </Text>
 
-        <View style={styles.dividerRow}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>O únete con</Text>
-          <View style={styles.dividerLine} />
-        </View>
+            <BusCaliTextField
+              label="Nombre"
+              icon="person-outline"
+              placeholder="Ej. Jairo"
+              value={nombre}
+              onChangeText={setNombre}
+              autoCapitalize="words"
+            />
+            <BusCaliTextField
+              label="Apellido"
+              icon="badge"
+              placeholder="Ej. Manrique"
+              value={apellido}
+              onChangeText={setApellido}
+              autoCapitalize="words"
+              containerStyle={styles.fieldSpace}
+            />
+            <BusCaliTextField
+              label="Correo electrónico"
+              icon="alternate-email"
+              placeholder="tu@email.com"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              containerStyle={styles.fieldSpace}
+            />
+            <BusCaliTextField
+              label="Teléfono"
+              icon="smartphone"
+              placeholder="Ej. 3001234567"
+              value={telefono}
+              onChangeText={setTelefono}
+              keyboardType="phone-pad"
+              maxLength={20}
+              containerStyle={styles.fieldSpace}
+            />
+            <BusCaliTextField
+              label="Contraseña"
+              icon="lock-outline"
+              placeholder="••••••••"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              containerStyle={styles.fieldSpace}
+            />
+            <BusCaliTextField
+              label="Confirmar contraseña"
+              icon="verified-user"
+              placeholder="••••••••"
+              value={confirm}
+              onChangeText={setConfirm}
+              secureTextEntry
+              containerStyle={styles.fieldSpace}
+            />
 
-        <View style={styles.socialRow}>
-          <TouchableOpacity style={styles.socialBtn} onPress={socialSoon}>
-            <AntDesign name="google" size={20} color={C.onSurface} />
-            <Text style={styles.socialLabel}>Google</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.socialBtn, styles.socialFb]} onPress={socialSoon}>
-            <FontAwesome name="facebook" size={22} color={C.white} />
-            <Text style={styles.socialLabelFb}>Facebook</Text>
-          </TouchableOpacity>
-        </View>
+            <Pressable
+              style={styles.termsRow}
+              onPress={() => setTerms((t) => !t)}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: terms }}
+            >
+              <View style={[styles.checkbox, terms && styles.checkboxOn]}>
+                {terms ? (
+                  <MaterialIcons name="check" size={16} color={C.onPrimary} />
+                ) : null}
+              </View>
+              <Text style={styles.termsText}>
+                Acepto los <Text style={styles.termsBold}>Términos y Condiciones</Text> y la política de privacidad
+              </Text>
+            </Pressable>
 
-        <Text style={styles.footer}>
-          ¿Ya tienes cuenta?{' '}
-          <Text style={styles.footerLink} onPress={() => navigation.navigate('Login')}>
-            Inicia sesión
-          </Text>
-        </Text>
+            {feedback ? (
+              <View
+                style={[
+                  styles.feedback,
+                  feedback.type === 'error' ? styles.feedbackError : styles.feedbackSuccess,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.feedbackText,
+                    feedback.type === 'error' ? styles.feedbackTextError : styles.feedbackTextSuccess,
+                  ]}
+                >
+                  {feedback.text}
+                </Text>
+              </View>
+            ) : null}
 
-        {__DEV__ ? (
-          <Text style={styles.devHint} numberOfLines={1}>
-            POST /api/usuarios · {getApiBaseUrl()}
-          </Text>
-        ) : null}
+            <TouchableOpacity
+              activeOpacity={0.92}
+              onPress={handleRegister}
+              disabled={loading}
+              style={[styles.ctaWrap, loading && styles.ctaDisabled]}
+            >
+              <LinearGradient
+                colors={[C.secondaryContainer, C.secondaryFixedDim]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.ctaGrad}
+              >
+                {loading ? (
+                  <ActivityIndicator color={C.onSecondaryContainer} />
+                ) : (
+                  <>
+                    <Text style={styles.ctaText}>Crear cuenta</Text>
+                    <MaterialIcons name="trending-flat" size={26} color={C.onSecondaryContainer} />
+                  </>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
 
-        <View style={styles.decorBus} pointerEvents="none">
-          <MaterialIcons name="directions-bus" size={120} color={`${C.primary}22`} />
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+            <Text style={styles.loginHint}>
+              ¿Ya tienes cuenta?{' '}
+              <Text style={styles.loginLink} onPress={() => navigation.navigate('Login')}>
+                Inicia sesión
+              </Text>
+            </Text>
+          </View>
+
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>O únete con</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <View style={styles.socialRow}>
+            <TouchableOpacity style={styles.socialBtn} onPress={socialSoon}>
+              <AntDesign name="google" size={20} color={C.onSurface} />
+              <Text style={styles.socialLabel}>Google</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.socialBtn, styles.socialFb]} onPress={socialSoon}>
+              <FontAwesome name="facebook" size={22} color={C.white} />
+              <Text style={styles.socialLabelFb}>Facebook</Text>
+            </TouchableOpacity>
+          </View>
+
+          {__DEV__ ? (
+            <Text style={styles.devHint} numberOfLines={1}>
+              POST /api/usuarios · {getApiBaseUrl()}
+            </Text>
+          ) : null}
+
+          <View style={styles.decorBus} pointerEvents="none">
+            <MaterialIcons name="directions-bus" size={120} color={`${C.primary}22`} />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -256,15 +311,24 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.surface },
   scroll: {
     paddingHorizontal: 24,
-    paddingTop: 12,
+    paddingTop: 18,
     paddingBottom: 48,
   },
   topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 28,
-    marginTop: 8,
+    marginBottom: 22,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  backText: {
+    fontFamily: F.bodyBold,
+    fontSize: 14,
+    color: C.primary,
   },
   logo: {
     fontFamily: F.headline,
@@ -273,49 +337,47 @@ const styles = StyleSheet.create({
     color: C.primary,
     fontStyle: 'italic',
   },
-  loginLink: {
-    fontFamily: F.bodyBold,
-    fontSize: 14,
-    color: C.primary,
-    textDecorationLine: 'underline',
+  card: {
+    backgroundColor: C.surfaceContainerLowest,
+    borderRadius: 32,
+    padding: 26,
+    borderWidth: 1,
+    borderColor: C.surfaceContainerHigh,
+    shadowColor: C.primary,
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.08,
+    shadowRadius: 30,
+    elevation: 10,
   },
-  headerBlock: { marginBottom: 28 },
-  titleLine1: {
+  titleBlock: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 8,
+  },
+  title: {
     fontFamily: F.headline,
-    fontSize: 36,
-    lineHeight: 40,
+    fontSize: 34,
     color: C.onSurface,
-    letterSpacing: -1,
+    lineHeight: 42,
   },
-  titleMovida: {
-    fontFamily: F.headline,
-    fontSize: 36,
-    lineHeight: 40,
+  titleAccent: {
     color: C.secondary,
-    letterSpacing: -1,
-    marginTop: -4,
-    marginBottom: 12,
   },
   subtitle: {
     fontFamily: F.bodyMed,
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 15,
     color: C.onSurfaceVariant,
+    lineHeight: 22,
+    marginBottom: 26,
   },
-  fieldSpace: { marginTop: 16 },
-  pwdGrid: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 16,
-    flexWrap: 'wrap',
-  },
-  pwdHalf: { flex: 1, minWidth: 140 },
+  fieldSpace: { marginTop: 18 },
   termsRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: 12,
     marginTop: 20,
-    paddingHorizontal: 2,
+    paddingRight: 4,
   },
   checkbox: {
     width: 22,
@@ -340,15 +402,33 @@ const styles = StyleSheet.create({
     color: C.onSurfaceVariant,
   },
   termsBold: { fontFamily: F.bodyBold, color: C.primary },
+  feedback: {
+    marginTop: 18,
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  feedbackError: {
+    backgroundColor: '#fee9ea',
+    borderWidth: 1,
+    borderColor: '#f1c1c5',
+  },
+  feedbackSuccess: {
+    backgroundColor: '#e8f7e7',
+    borderWidth: 1,
+    borderColor: '#9dd7a8',
+  },
+  feedbackText: {
+    fontFamily: F.bodyMed,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  feedbackTextError: { color: '#dd0000' },
+  feedbackTextSuccess: { color: '#008000' },
   ctaWrap: {
     marginTop: 24,
     borderRadius: 999,
     overflow: 'hidden',
-    shadowColor: C.secondary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 6,
   },
   ctaDisabled: { opacity: 0.75 },
   ctaGrad: {
@@ -364,10 +444,27 @@ const styles = StyleSheet.create({
     color: C.onSecondaryFixed,
     letterSpacing: 0.3,
   },
+  loginHint: {
+    marginTop: 20,
+    textAlign: 'center',
+    fontFamily: F.bodyMed,
+    fontSize: 15,
+    color: C.onSurfaceVariant,
+  },
+  loginLink: {
+    fontFamily: F.bodyBold,
+    color: '#0000dd',
+  },
+  loginLinkTop: {
+    fontFamily: F.bodyBold,
+    color: '#006666',
+    textDecorationLine: 'underline',
+    fontSize: 14,
+  },
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 28,
+    marginVertical: 26,
     gap: 12,
   },
   dividerLine: { flex: 1, height: 1, backgroundColor: `${C.outline}22` },
@@ -405,19 +502,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: C.white,
   },
-  footer: {
-    marginTop: 28,
-    textAlign: 'center',
-    fontFamily: F.bodyMed,
-    fontSize: 15,
-    color: C.onSurfaceVariant,
-  },
-  footerLink: {
-    fontFamily: F.bodyBold,
-    color: C.primary,
-  },
   devHint: {
-    marginTop: 16,
+    marginTop: 22,
     textAlign: 'center',
     fontSize: 10,
     color: C.outline,
