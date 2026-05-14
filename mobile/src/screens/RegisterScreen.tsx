@@ -7,7 +7,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Alert,
   ScrollView,
   Pressable,
 } from 'react-native';
@@ -20,6 +19,7 @@ import { registrarUsuario } from '../services/usuariosApi';
 import { getApiBaseUrl } from '../config/api';
 import { C, F } from '../theme/buscaliTheme';
 import BusCaliTextField from '../components/BusCaliTextField';
+import { appAlert } from '../utils/appAlert';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Register'>;
 
@@ -49,6 +49,9 @@ export default function RegisterScreen({ navigation }: Props) {
       navigation.navigate('Login');
     }
   };
+
+  const socialSoon = () =>
+    appAlert('Próximamente', 'El registro con redes sociales se activará más adelante.');
 
   const handleRegister = async () => {
     setFeedback(null);
@@ -118,9 +121,6 @@ export default function RegisterScreen({ navigation }: Props) {
       setLoading(false);
     }
   };
-
-  const socialSoon = () =>
-    Alert.alert('Próximamente', 'El registro con redes sociales se activará más adelante.');
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
@@ -293,7 +293,7 @@ export default function RegisterScreen({ navigation }: Props) {
 
           {__DEV__ ? (
             <Text style={styles.devHint} numberOfLines={1}>
-              POST /api/usuarios · {getApiBaseUrl()}
+              POST /api/v1/usuarios · {getApiBaseUrl()}
             </Text>
           ) : null}
 

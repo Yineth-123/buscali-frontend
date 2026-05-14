@@ -14,10 +14,11 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AppStackParamList } from '../types/navigation';
 import { buscarRutas } from '../services/routeService';
 import { C, F } from '../theme/buscaliTheme';
-import RutaMapPicker, {
+import RutaMapPicker from '../components/RutaMapPicker';
+import {
   offsetDestinoDesdeOrigen,
   type MapaPaso,
-} from '../components/RutaMapPicker';
+} from '../components/RutaMapPicker.shared';
 
 const DEFAULT_COORD = { latitude: 3.4516, longitude: -76.532 };
 

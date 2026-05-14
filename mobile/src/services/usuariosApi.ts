@@ -1,5 +1,7 @@
 import { getApiBaseUrl } from '../config/api';
 
+const USUARIOS_V1 = '/api/v1/usuarios';
+
 export type UsuarioPublico = {
   id: number;
   nombre: string;
@@ -11,6 +13,55 @@ export type UsuarioPublico = {
   updatedAt: string;
 };
 
+type ApiSuccess<T> = {
+  status: string;
+  code: number;
+  message: string;
+  data?: T;
+};
+
+type ApiErrorBody = {
+  status?: string;
+  message?: string;
+  errors?: string[];
+};
+
+function mapUsuarioApiToPublico(u: {
+  id_usuario?: number;
+  nombre?: string;
+  apellido?: string;
+  correo?: string | null;
+  telefono?: string | null;
+  fecha_registro?: string | Date;
+}): UsuarioPublico {
+  const created =
+    u.fecha_registro != null
+      ? typeof u.fecha_registro === 'string'
+        ? u.fecha_registro
+        : u.fecha_registro.toISOString()
+      : new Date().toISOString();
+  return {
+    id: u.id_usuario ?? 0,
+    nombre: u.nombre ?? '',
+    apellido: u.apellido ?? '',
+    email: u.correo ?? null,
+    telefono: u.telefono ?? null,
+    rol: 'usuario',
+    createdAt: created,
+    updatedAt: created,
+  };
+}
+
+function parseErrorMessage(data: unknown, fallback: string): string {
+  if (typeof data !== 'object' || data === null) return fallback;
+  const d = data as ApiErrorBody;
+  if (Array.isArray(d.errors) && d.errors.length > 0) {
+    return d.errors.join(' ');
+  }
+  if (typeof d.message === 'string' && d.message) return d.message;
+  return fallback;
+}
+
 export async function registrarUsuario(body: {
   nombre: string;
   apellido: string;
@@ -19,12 +70,21 @@ export async function registrarUsuario(body: {
   email?: string;
 }): Promise<UsuarioPublico> {
   const base = getApiBaseUrl();
+  const correo = (body.email ?? '').trim();
+  const telefonoDigits = body.telefono.replace(/\D/g, '');
   let res: Response;
   try {
-    res = await fetch(`${base}/api/usuarios`, {
+    res = await fetch(`${base}${USUARIOS_V1}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        nombre: body.nombre.trim(),
+        apellido: body.apellido.trim(),
+        correo,
+        telefono: telefonoDigits || undefined,
+        password: body.password,
+        aceptaTerminos: true,
+      }),
     });
   } catch {
     throw new Error(
@@ -34,16 +94,14 @@ export async function registrarUsuario(body: {
   }
   const data: unknown = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const msg =
-      typeof data === 'object' &&
-      data !== null &&
-      'error' in data &&
-      typeof (data as { error: unknown }).error === 'string'
-        ? (data as { error: string }).error
-        : `Error del servidor (${res.status})`;
-    throw new Error(msg);
+    throw new Error(parseErrorMessage(data, `Error del servidor (${res.status})`));
   }
-  return data as UsuarioPublico;
+  const wrapped = data as ApiSuccess<Record<string, unknown>>;
+  const raw = wrapped.data;
+  if (!raw || typeof raw !== 'object') {
+    throw new Error('Respuesta de registro inválida');
+  }
+  return mapUsuarioApiToPublico(raw as Parameters<typeof mapUsuarioApiToPublico>[0]);
 }
 
 /** Inicia sesión con correo o teléfono y contraseña. */
@@ -52,12 +110,19 @@ export async function iniciarSesion(body: {
   password: string;
 }): Promise<UsuarioPublico> {
   const base = getApiBaseUrl();
+  const id = body.identificador.trim();
+  const payload: Record<string, string> = { password: body.password };
+  if (id.includes('@')) {
+    payload.correo = id;
+  } else {
+    payload.telefono = id.replace(/\D/g, '');
+  }
   let res: Response;
   try {
-    res = await fetch(`${base}/api/auth/login`, {
+    res = await fetch(`${base}${USUARIOS_V1}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      body: JSON.stringify(payload),
     });
   } catch {
     throw new Error(
@@ -66,14 +131,12 @@ export async function iniciarSesion(body: {
   }
   const data: unknown = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const msg =
-      typeof data === 'object' &&
-      data !== null &&
-      'error' in data &&
-      typeof (data as { error: unknown }).error === 'string'
-        ? (data as { error: string }).error
-        : `Error del servidor (${res.status})`;
-    throw new Error(msg);
+    throw new Error(parseErrorMessage(data, `Error del servidor (${res.status})`));
   }
-  return data as UsuarioPublico;
+  const wrapped = data as ApiSuccess<{ usuario?: Record<string, unknown> }>;
+  const raw = wrapped.data?.usuario;
+  if (!raw || typeof raw !== 'object') {
+    throw new Error('Respuesta de login inválida');
+  }
+  return mapUsuarioApiToPublico(raw as Parameters<typeof mapUsuarioApiToPublico>[0]);
 }

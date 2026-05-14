@@ -14,8 +14,6 @@ import {
 
   Platform,
 
-  Alert,
-
   ScrollView,
 
   Pressable,
@@ -41,6 +39,7 @@ import { useAuth } from '../context/AuthContext';
 import { C, F } from '../theme/buscaliTheme';
 
 import BusCaliTextField from '../components/BusCaliTextField';
+import { appAlert } from '../utils/appAlert';
 
 
 
@@ -64,7 +63,7 @@ export default function LoginScreen({ navigation }: Props) {
 
     if (!id) {
 
-      Alert.alert('Validación', 'Ingresa tu correo o teléfono.');
+      appAlert('Validación', 'Ingresa tu correo o teléfono.');
 
       return;
 
@@ -72,7 +71,7 @@ export default function LoginScreen({ navigation }: Props) {
 
     if (!password) {
 
-      Alert.alert('Validación', 'Ingresa tu contraseña.');
+      appAlert('Validación', 'Ingresa tu contraseña.');
 
       return;
 
@@ -91,7 +90,7 @@ export default function LoginScreen({ navigation }: Props) {
 
       const message = e instanceof Error ? e.message : 'No se pudo iniciar sesión';
 
-      Alert.alert('Inicio de sesión', message);
+      appAlert('Inicio de sesión', message);
 
     } finally {
 
@@ -105,7 +104,7 @@ export default function LoginScreen({ navigation }: Props) {
 
   const socialSoon = () =>
 
-    Alert.alert('Próximamente', 'El acceso con Google o Apple se configurará más adelante.');
+    appAlert('Próximamente', 'El acceso con Google o Apple se configurará más adelante.');
 
 
 
@@ -187,7 +186,7 @@ export default function LoginScreen({ navigation }: Props) {
 
                 onPress={() =>
 
-                  Alert.alert('Recuperar contraseña', 'Esta función estará disponible pronto.')
+                  appAlert('Recuperar contraseña', 'Esta función estará disponible pronto.')
 
                 }
 
