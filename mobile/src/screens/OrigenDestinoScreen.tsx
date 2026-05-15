@@ -9,6 +9,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AppStackParamList } from '../types/navigation';
@@ -57,14 +58,25 @@ export default function OrigenDestinoScreen({ navigation }: Props) {
     }
     try {
       setLoading(true);
-      const response = await buscarRutas(origen, destino);
-      if (response.success) {
-        navigation.navigate('ListaRutas', {
-          origen,
-          destino,
-          rutas: response.rutas,
-        });
+      const response = await buscarRutas(
+        origen,
+        destino,
+        origenCoord.latitude,
+        origenCoord.longitude,
+        destinoCoord.latitude,
+        destinoCoord.longitude,
+      );
+      if (!response.success) {
+        Alert.alert('Buscar ruta', response.error ?? 'No se pudo obtener sugerencias.');
+        return;
       }
+      navigation.navigate('ListaRutas', {
+        origen,
+        destino,
+        origenCoord: { ...origenCoord },
+        destinoCoord: { ...destinoCoord },
+        rutas: response.rutas,
+      });
     } catch (error) {
       console.log('error consultando rutas', error);
     } finally {

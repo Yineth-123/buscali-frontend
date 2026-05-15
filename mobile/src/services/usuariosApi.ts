@@ -88,8 +88,8 @@ export async function registrarUsuario(body: {
     });
   } catch {
     throw new Error(
-      `Sin conexión al servidor (${base}). ¿Backend en marcha en el puerto 3000? ` +
-        'En celular físico no uses localhost: define EXPO_PUBLIC_API_URL con la IP de tu PC (ej. http://192.168.1.10:3000) o abre Expo en modo LAN.'
+      `Sin conexión al servidor (${base}). Comprueba que el backend esté en marcha y el mismo puerto. ` +
+        'En celular no uses localhost ni https local: deja EXPO_PUBLIC_API_URL vacío para usar la IP LAN de Expo, o pon http://TU_IP:PUERTO (ej. http://192.168.1.10:3001).'
     );
   }
   const data: unknown = await res.json().catch(() => ({}));
@@ -126,7 +126,8 @@ export async function iniciarSesion(body: {
     });
   } catch {
     throw new Error(
-      `Sin conexión al servidor (${base}). Comprueba que el backend esté en marcha y la URL de red.`
+      `Sin conexión al servidor (${base}). Backend en marcha y firewall permitiendo el puerto. ` +
+        'En físico: sin localhost; usa IP de tu PC o deja la URL vacía en .env para detección LAN.'
     );
   }
   const data: unknown = await res.json().catch(() => ({}));

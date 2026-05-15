@@ -6,7 +6,7 @@ import { C, F } from '../theme/buscaliTheme';
 type Props = NativeStackScreenProps<AppStackParamList, 'ListaRutas'>;
 
 export default function ListaRutasScreen({ route, navigation }: Props) {
-  const { origen, destino, rutas } = route.params;
+  const { origen, destino, origenCoord, destinoCoord, rutas } = route.params;
 
   return (
     <View style={styles.container}>
@@ -25,10 +25,17 @@ export default function ListaRutasScreen({ route, navigation }: Props) {
                 destino,
                 rutaId: item.id,
                 rutaNombre: item.nombre,
+                origenCoord,
+                destinoCoord,
               })
             }
           >
             <Text style={styles.cardTitle}>{item.nombre}</Text>
+            {item.proximidad_m != null ? (
+              <Text style={styles.cardSub}>
+                Proximidad al trayecto: ~{item.proximidad_m} m (menor es mejor)
+              </Text>
+            ) : null}
           </TouchableOpacity>
         )}
       />
@@ -65,5 +72,11 @@ const styles = StyleSheet.create({
     fontFamily: F.bodySemi,
     fontSize: 16,
     color: C.onSurface,
+  },
+  cardSub: {
+    fontFamily: F.body,
+    fontSize: 13,
+    color: C.onSurfaceVariant,
+    marginTop: 6,
   },
 });

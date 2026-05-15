@@ -20,6 +20,8 @@
       }
     },
     "android": {
+      "package": "com.buscali.usuarios",
+      "versionCode": 1,
       "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
